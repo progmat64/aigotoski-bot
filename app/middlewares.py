@@ -1,7 +1,7 @@
+from typing import Any, Awaitable, Callable, Dict
+
 from aiogram import BaseMiddleware
 from aiogram.types import Message
-
-from typing import Callable, Dict, Any, Awaitable
 
 
 class CounterMiddleware(BaseMiddleware):
@@ -12,8 +12,8 @@ class CounterMiddleware(BaseMiddleware):
         self,
         handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
         event: Message,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
     ) -> Any:
         self.counter += 1
-        data['counter'] = self.counter
+        data["counter"] = self.counter
         return await handler(event, data)
