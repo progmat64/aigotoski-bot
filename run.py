@@ -1,8 +1,6 @@
 import asyncio
 
 from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 
 from app.admin import admin
 from app.database.models import async_main
@@ -13,7 +11,6 @@ from config import TOKEN
 async def main():
     bot = Bot(
         token=TOKEN,
-        # default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
 
     dp = Dispatcher()
@@ -39,4 +36,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        pass
+        print("Bot stopped manually.")

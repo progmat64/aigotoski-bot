@@ -8,51 +8,41 @@ from app.database.requests import (add_training, delete_training,
                                    edit_training, get_user_bookings)
 
 admin = Router()
-
 ADMINS = [7167447292]
 
 
 class Admin(Filter):
-    """Фильтр для проверки прав администратора."""
-
     async def __call__(self, message: Message) -> bool:
         return message.from_user.id in ADMINS
 
 
 @admin.message(Command("admin"), Admin())
 async def cmd_admin(message: Message):
-    """Обрабатывает команду /admin."""
     await message.answer("Добро пожаловать в панель администратора!")
 
 
 @admin.message(Command("add_training"))
 async def add_training_handler(message: Message):
-    """Добавляет новую тренировку."""
     try:
         args = message.text.split(maxsplit=1)[1]
         name, date_str, max_participants = args.split("|")
         date = datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M")
         max_participants = int(max_participants.strip())
 
-        await add_training(
-            name=name.strip(), date=date, max_participants=max_participants
-        )
+        await add_training(name=name.strip(), date=date, max_participants=max_participants)
         await message.answer(f"Тренировка '{name.strip()}' добавлена на {date}.")
     except (ValueError, IndexError):
-        await message.answer(
-            "Неправильный формат команды. Пример: /add_training Йога | 2025-01-20 18:00 | 10"
-        )
+        await message.answer("Неправильный формат команды. Пример: /add_training Йога | 2025-01-20 18:00 | 10")
 
 
 @admin.message(Command("edit_training"))
 async def edit_training_handler(message: Message):
-    """Редактирует тренировку по ID."""
     try:
         args = message.text.split(maxsplit=1)[1]
         training_id, updates = args.split("|", maxsplit=1)
         training_id = int(training_id.strip())
 
-        name = date = max_participants = None
+        name, date, max_participants = None, None, None
         for update in updates.split(";"):
             key, value = update.strip().split("=")
             if key == "name":
@@ -62,13 +52,12 @@ async def edit_training_handler(message: Message):
             elif key == "max":
                 max_participants = int(value.strip())
 
-        success = await edit_training(
-            training_id, name=name, date=date, max_participants=max_participants
+        success = await edit_training(training_id, name=name, date=date, max_participants=max_participants)
+        await message.answer(
+            f"Тренировка ID {training_id} успешно обновлена."
+            if success
+            else f"Тренировка с ID {training_id} не найдена."
         )
-        if success:
-            await message.answer(f"Тренировка ID {training_id} успешно обновлена.")
-        else:
-            await message.answer(f"Тренировка с ID {training_id} не найдена.")
     except (ValueError, IndexError):
         await message.answer(
             "Неправильный формат команды. Пример: /edit_training 1 | name=Йога; date=2025-01-20 18:00; max=15"
@@ -77,23 +66,18 @@ async def edit_training_handler(message: Message):
 
 @admin.message(Command("delete_training"))
 async def delete_training_handler(message: Message):
-    """Удаляет тренировку по ID."""
     try:
         training_id = int(message.text.split(maxsplit=1)[1])
         success = await delete_training(training_id)
-        if success:
-            await message.answer(f"Тренировка ID {training_id} успешно удалена.")
-        else:
-            await message.answer(f"Тренировка с ID {training_id} не найдена.")
-    except (ValueError, IndexError):
         await message.answer(
-            "Укажите корректный ID тренировки. Пример: /delete_training 1"
+            f"Тренировка ID {training_id} успешно удалена." if success else f"Тренировка с ID {training_id} не найдена."
         )
+    except (ValueError, IndexError):
+        await message.answer("Укажите корректный ID тренировки. Пример: /delete_training 1")
 
 
 @admin.message(Command("view_all_bookings"))
 async def view_all_bookings_handler(message: Message):
-    """Показывает администратору все записи."""
     bookings = await get_user_bookings()
     if bookings:
         response = "\n\n".join(
@@ -111,11 +95,8 @@ async def view_all_bookings_handler(message: Message):
         await message.answer("Записей пока нет.")
 
 
-
-
 @admin.message(Command("help_admin"))
 async def help_admin(message: Message):
-    """Отображает список команд администратора."""
     commands = (
         "/add_training — добавление новой тренировки.\n"
         "/edit_training [id тренировки] — редактирование тренировки.\n"
