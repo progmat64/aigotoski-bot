@@ -1,4 +1,6 @@
-from sqlalchemy import delete, desc, select, update
+from datetime import datetime
+
+from sqlalchemy import select
 
 from app.database.models import Booking, Training, User, async_session
 
@@ -12,28 +14,35 @@ async def set_user(tg_id):
             await session.commit()
 
 
-from datetime import datetime
-
-
 async def book_training(user_id: int, training_id: int):
     """Записывает пользователя на тренировку."""
     async with async_session() as session:
-        # Проверка наличия места
+        # Проверка на существующую запись
+        existing_booking = await session.scalar(
+            select(Booking).where(
+                Booking.user_id == user_id,
+                Booking.training_id == training_id
+            )
+        )
+        if existing_booking:
+            return False, "Вы уже записаны на эту тренировку."
+
+        # Проверка на доступные места
         training = await session.get(Training, training_id)
         if training and training.current_participants < training.max_participants:
-            # Создание записи с текущей датой
             session.add(
                 Booking(
                     user_id=user_id,
                     training_id=training_id,
-                    booking_date=datetime.now(),  # Устанавливаем текущую дату и время
+                    booking_date=datetime.now(),
                     status=True,
                 )
             )
             training.current_participants += 1
             await session.commit()
-            return True
-        return False
+            return True, "Вы успешно записались на тренировку."
+        return False, "Запись невозможна: тренировка недоступна или мест больше нет."
+
 
 
 async def cancel_booking(user_id: int, training_id: int):
@@ -68,9 +77,6 @@ async def get_trainings():
     async with async_session() as session:
         result = await session.scalars(select(Training))
         return result.all()
-
-
-from datetime import datetime
 
 
 async def add_training(name: str, date: datetime, max_participants: int):
@@ -114,13 +120,9 @@ async def delete_training(training_id: int):
         return True
 
 
-from app.database.models import Booking, Training, async_session
-
-
 async def edit_booking(user_id: int, old_training_id: int, new_training_id: int):
     """Редактирует запись пользователя на новую тренировку."""
     async with async_session() as session:
-        # Получаем старую запись
         booking = await session.scalar(
             select(Booking).where(
                 Booking.user_id == user_id, Booking.training_id == old_training_id
@@ -146,15 +148,21 @@ async def edit_booking(user_id: int, old_training_id: int, new_training_id: int)
         return True, "Запись успешно изменена."
 
 
-from app.database.models import Booking, Training, async_session
+from sqlalchemy.orm import joinedload
 
-
-async def get_user_bookings(user_id: int):
-    """Получает список записей пользователя на тренировки."""
+async def get_user_bookings(user_id: int = None):
+    """Получает список записей на тренировки.
+    Если `user_id` не указан, возвращает записи для всех пользователей.
+    """
     async with async_session() as session:
-        result = await session.execute(
-            select(Booking, Training)
-            .join(Training, Booking.training_id == Training.training_id)
-            .where(Booking.user_id == user_id)
+        query = (
+            select(Booking)
+            .options(
+                joinedload(Booking.training),
+                joinedload(Booking.user),
+            )
         )
-        return result.fetchall()  # Вернёт список кортежей (Booking, Training)
+        if user_id:
+            query = query.where(Booking.user_id == user_id)
+        result = await session.execute(query)
+        return result.scalars().all()

@@ -1,7 +1,3 @@
-# Asynchronous Example
-import asyncio
-import os
-
 from mistralai import Mistral
 
 from config import AI_TOKEN
@@ -11,7 +7,6 @@ async def generate(content):
     async with Mistral(
         api_key=AI_TOKEN,
     ) as mistral:
-        # model можно менять
         res = await mistral.chat.complete_async(
             model="mistral-small-latest",
             messages=[

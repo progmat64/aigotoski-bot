@@ -1,4 +1,4 @@
-from datetime import datetime  # Импорт стандартного Python типа
+from datetime import datetime
 
 from sqlalchemy import (BigInteger, Boolean, DateTime, ForeignKey, Integer,
                         String)
@@ -8,7 +8,6 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from config import DB_URL
 
-# Создание асинхронного движка для базы данных
 engine = create_async_engine(url=DB_URL, echo=True)
 async_session = async_sessionmaker(engine)
 
@@ -23,44 +22,28 @@ class Base(AsyncAttrs, DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
 
-    user_id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )  # Автоинкремент
-    tg_id: Mapped[int] = mapped_column(
-        BigInteger, unique=True, nullable=False
-    )  # ID Telegram пользователя
-    name: Mapped[str] = mapped_column(
-        String(255), nullable=True
-    )  # Имя пользователя (опционально)
-    contact_info: Mapped[str] = mapped_column(
-        String(255), nullable=True
-    )  # Контактная информация (опционально)
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tg_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=True)
+    contact_info: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    # Связь с таблицей записей
-    bookings: Mapped[list["Booking"]] = relationship("Booking", back_populates="user")
+    bookings: Mapped[list["Booking"]] = relationship(
+        "Booking", back_populates="user", primaryjoin="User.tg_id==Booking.user_id"
+    )
 
 
-# Таблица тренировок
+
 class Training(Base):
     __tablename__ = "trainings"
 
     training_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
-    )  # Уникальный ID тренировки
-    name: Mapped[str] = mapped_column(
-        String(255), nullable=False
-    )  # Название тренировки
-    date: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False
-    )  # Дата и время тренировки (Python тип datetime)
-    max_participants: Mapped[int] = mapped_column(
-        Integer, nullable=False
-    )  # Максимальное количество участников
-    current_participants: Mapped[int] = mapped_column(
-        Integer, default=0
-    )  # Текущее количество участников
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    max_participants: Mapped[int] = mapped_column(Integer, nullable=False)
+    current_participants: Mapped[int] = mapped_column(Integer, default=0)
 
-    # Связь с таблицей записей
     bookings: Mapped[list["Booking"]] = relationship(
         "Booking", back_populates="training"
     )
@@ -72,26 +55,21 @@ class Booking(Base):
 
     booking_id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True
-    )  # Уникальный ID записи
+    )
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.user_id"), nullable=False
-    )  # ID пользователя (FK)
+        ForeignKey("users.tg_id"), nullable=False
+    )
     training_id: Mapped[int] = mapped_column(
         ForeignKey("trainings.training_id"), nullable=False
-    )  # ID тренировки (FK)
-    booking_date: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False
-    )  # Дата и время записи (Python тип datetime)
-    status: Mapped[bool] = mapped_column(
-        Boolean, default=True
-    )  # Статус записи (активна/отменена)
+    )
+    booking_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    status: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Обратные связи
-    user: Mapped["User"] = relationship("User", back_populates="bookings")
+    user: Mapped["User"] = relationship("User", back_populates="bookings", foreign_keys=[user_id])
     training: Mapped["Training"] = relationship("Training", back_populates="bookings")
 
 
-# Функция для создания таблиц в базе данных
+
 async def async_main():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

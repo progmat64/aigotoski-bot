@@ -3,7 +3,8 @@ from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from app.database.requests import book_training, get_trainings, set_user
+from app.database.requests import (book_training, cancel_booking, edit_booking,
+                                   get_trainings, get_user_bookings, set_user)
 from app.generators import generate
 from app.states import Work
 
@@ -40,6 +41,7 @@ async def view_schedule(message: Message):
 from aiogram.filters.command import CommandObject
 
 
+
 @user.message(Command("book"))
 async def book(message: Message, command: CommandObject):
     """Обрабатывает запись пользователя на тренировку."""
@@ -50,22 +52,13 @@ async def book(message: Message, command: CommandObject):
 
     try:
         training_id = int(args)
-        success = await book_training(
+        success, response = await book_training(
             user_id=message.from_user.id, training_id=training_id
         )
-        if success:
-            await message.answer(
-                f"Вы успешно записались на тренировку ID {training_id}."
-            )
-        else:
-            await message.answer(
-                "Запись невозможна: тренировка недоступна, мест больше нет или ID указан неверно."
-            )
+        await message.answer(response)
     except ValueError:
         await message.answer("Укажите корректный ID тренировки. Пример: /book 1")
 
-
-from app.database.requests import cancel_booking
 
 
 @user.message(Command("cancel"))
@@ -91,23 +84,23 @@ async def cancel(message: Message, command: CommandObject):
         await message.answer("Укажите корректный ID тренировки. Пример: /cancel 1")
 
 
-from app.database.requests import get_user_bookings
-
-
 @user.message(Command("my_bookings"))
-async def my_bookings(message: Message):
-    """Показывает все записи пользователя."""
+async def my_bookings_handler(message: Message):
+    """Показывает записи пользователя на тренировки."""
     bookings = await get_user_bookings(user_id=message.from_user.id)
     if bookings:
-        response = "\n".join(
-            [f"{b.booking_id}: {b.training.name} ({b.training.date})" for b in bookings]
+        response = "\n\n".join(
+            [
+                f"Запись ID: {booking.booking_id}\n"
+                f"Тренировка: {booking.training.name}\n"
+                f"Дата и время: {booking.training.date.strftime('%Y-%m-%d %H:%M')}\n"
+                f"Статус: {'Активна' if booking.status else 'Отменена'}"
+                for booking in bookings
+            ]
         )
-        await message.answer(f"Ваши записи:\n{response}")
+        await message.answer(f"Ваши записи:\n\n{response}")
     else:
-        await message.answer("У вас пока нет записей.")
-
-
-from app.database.requests import edit_booking
+        await message.answer("У вас пока нет записей на тренировки.")
 
 
 @user.message(Command("edit"))
@@ -143,28 +136,6 @@ async def help_command(message: Message):
         "/help — помощь по работе с ботом."
     )
     await message.answer(f"Доступные команды:\n{commands}")
-
-
-from app.database.requests import get_user_bookings
-
-
-@user.message(Command("my_bookings"))
-async def my_bookings_handler(message: Message):
-    """Обрабатывает команду /my_bookings для показа всех записей пользователя."""
-    bookings = await get_user_bookings(user_id=message.from_user.id)
-    if bookings:
-        response = "\n\n".join(
-            [
-                f"Запись ID: {booking.booking_id}\n"
-                f"Тренировка: {training.name}\n"
-                f"Дата и время: {training.date.strftime('%Y-%m-%d %H:%M')}\n"
-                f"Статус: {'Активна' if booking.status else 'Отменена'}"
-                for booking, training in bookings
-            ]
-        )
-        await message.answer(f"Ваши записи:\n\n{response}")
-    else:
-        await message.answer("У вас пока нет записей на тренировки.")
 
 
 #######################

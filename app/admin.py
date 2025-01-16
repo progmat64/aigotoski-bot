@@ -1,19 +1,21 @@
-from aiogram import F, Router
-from aiogram.filters import Command, CommandStart, Filter
-from aiogram.types import CallbackQuery, Message
+from datetime import datetime
+
+from aiogram import Router
+from aiogram.filters import Command, Filter
+from aiogram.types import Message
+
+from app.database.requests import (add_training, delete_training,
+                                   edit_training, get_user_bookings)
 
 admin = Router()
 
-
-# Список администраторов по tg_id
-ADMINS = [7167447292]  # Укажите ваши Telegram ID
+ADMINS = [7167447292]
 
 
 class Admin(Filter):
     """Фильтр для проверки прав администратора."""
 
     async def __call__(self, message: Message) -> bool:
-        # Проверяем, находится ли tg_id пользователя в списке администраторов
         return message.from_user.id in ADMINS
 
 
@@ -21,11 +23,6 @@ class Admin(Filter):
 async def cmd_admin(message: Message):
     """Обрабатывает команду /admin."""
     await message.answer("Добро пожаловать в панель администратора!")
-
-
-from datetime import datetime
-
-from app.database.requests import add_training
 
 
 @admin.message(Command("add_training"))
@@ -45,9 +42,6 @@ async def add_training_handler(message: Message):
         await message.answer(
             "Неправильный формат команды. Пример: /add_training Йога | 2025-01-20 18:00 | 10"
         )
-
-
-from app.database.requests import edit_training
 
 
 @admin.message(Command("edit_training"))
@@ -81,9 +75,6 @@ async def edit_training_handler(message: Message):
         )
 
 
-from app.database.requests import delete_training
-
-
 @admin.message(Command("delete_training"))
 async def delete_training_handler(message: Message):
     """Удаляет тренировку по ID."""
@@ -100,23 +91,26 @@ async def delete_training_handler(message: Message):
         )
 
 
-from app.database.requests import get_user_bookings
-
-
 @admin.message(Command("view_all_bookings"))
 async def view_all_bookings_handler(message: Message):
     """Показывает администратору все записи."""
-    bookings = await get_user_bookings(user_id=None)  # Получение всех записей
+    bookings = await get_user_bookings()
     if bookings:
-        response = "\n".join(
+        response = "\n\n".join(
             [
-                f"{b.booking_id}: Пользователь {b.user.name or b.user.user_id}, Тренировка {b.training.name} ({b.training.date})"
-                for b in bookings
+                f"Запись ID: {booking.booking_id}\n"
+                f"Пользователь: {booking.user.name or booking.user.tg_id if booking.user else 'Неизвестный пользователь'}\n"
+                f"Тренировка: {booking.training.name if booking.training else 'Неизвестная тренировка'}\n"
+                f"Дата и время: {booking.training.date.strftime('%Y-%m-%d %H:%M') if booking.training else 'Нет данных'}\n"
+                f"Статус: {'Активна' if booking.status else 'Отменена'}"
+                for booking in bookings
             ]
         )
-        await message.answer(f"Все записи:\n{response}")
+        await message.answer(f"Все записи:\n\n{response}")
     else:
         await message.answer("Записей пока нет.")
+
+
 
 
 @admin.message(Command("help_admin"))
