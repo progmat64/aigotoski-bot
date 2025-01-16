@@ -29,10 +29,16 @@ async def add_training_handler(message: Message):
         date = datetime.strptime(date_str.strip(), "%Y-%m-%d %H:%M")
         max_participants = int(max_participants.strip())
 
-        await add_training(name=name.strip(), date=date, max_participants=max_participants)
-        await message.answer(f"Тренировка '{name.strip()}' добавлена на {date}.")
+        await add_training(
+            name=name.strip(), date=date, max_participants=max_participants
+        )
+        await message.answer(
+            f"Тренировка '{name.strip()}' добавлена на {date}."
+        )
     except (ValueError, IndexError):
-        await message.answer("Неправильный формат команды. Пример: /add_training Йога | 2025-01-20 18:00 | 10")
+        await message.answer(
+            "Неправильный формат команды. Пример: /add_training Йога | 2025-01-20 18:00 | 10"
+        )
 
 
 @admin.message(Command("edit_training"))
@@ -52,7 +58,12 @@ async def edit_training_handler(message: Message):
             elif key == "max":
                 max_participants = int(value.strip())
 
-        success = await edit_training(training_id, name=name, date=date, max_participants=max_participants)
+        success = await edit_training(
+            training_id,
+            name=name,
+            date=date,
+            max_participants=max_participants,
+        )
         await message.answer(
             f"Тренировка ID {training_id} успешно обновлена."
             if success
@@ -70,10 +81,14 @@ async def delete_training_handler(message: Message):
         training_id = int(message.text.split(maxsplit=1)[1])
         success = await delete_training(training_id)
         await message.answer(
-            f"Тренировка ID {training_id} успешно удалена." if success else f"Тренировка с ID {training_id} не найдена."
+            f"Тренировка ID {training_id} успешно удалена."
+            if success
+            else f"Тренировка с ID {training_id} не найдена."
         )
     except (ValueError, IndexError):
-        await message.answer("Укажите корректный ID тренировки. Пример: /delete_training 1")
+        await message.answer(
+            "Укажите корректный ID тренировки. Пример: /delete_training 1"
+        )
 
 
 @admin.message(Command("view_all_bookings"))
